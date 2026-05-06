@@ -20,7 +20,7 @@ OHCHR.LANG_LOCALE_MAP = {
     Chinese: 'zh-CN'
 };
 
-OHCHR.getActiveLangs = function(config = {}) {
+OHCHR.getActiveLangs = function(fd, config = {}) {
     const originalField = config.originalField || 'OriginalLanguage';
     const otherFields = config.otherFields || ['OtherUNLanguages'];
 
@@ -37,15 +37,17 @@ OHCHR.getActiveLangs = function(config = {}) {
     return [...new Set(active.filter(Boolean))];
 };
 
-OHCHR.updateOtherLanguagesOptions = function(config = {}) {
-    const originalFieldName = config.originalField || "OriginalLanguage";
-    const otherFieldName = config.otherField || "OtherUNLanguages";
+OHCHR.updateOtherLanguagesOptions = function(fd, config = {}) {
+    const originalFieldName = config.originalField || 'OriginalLanguage';
+    const otherFieldName = config.otherField || 'OtherUNLanguages';
     const languages = config.languages || OHCHR.UN_LANGUAGES || [];
 
+    const originalField = fd.field(originalFieldName);
     const otherField = fd.field(otherFieldName);
-    if (!otherField) return;
 
-    const origLang = fd.field(originalFieldName)?.value;
+    if (!originalField || !otherField) return;
+
+    const origLang = originalField.value;
 
     const items = languages
         .filter(lang => lang !== origLang)
@@ -55,20 +57,20 @@ OHCHR.updateOtherLanguagesOptions = function(config = {}) {
         const current = OHCHR.ensureArray(otherField.value)
             .filter(lang => lang !== origLang);
 
-        if (otherField.widget && typeof otherField.widget.setDataSource === "function") {
+        if (otherField.widget && typeof otherField.widget.setDataSource === 'function') {
             otherField.widget.setOptions({
-                dataTextField: "text",
-                dataValueField: "value"
+                dataTextField: 'text',
+                dataValueField: 'value'
             });
 
             otherField.widget.setDataSource(new kendo.data.DataSource({ data: items }));
             otherField.widget.refresh();
             otherField.widget.value(current);
-            otherField.widget.trigger("change");
+            otherField.widget.trigger('change');
         } else {
             try {
                 otherField.options = items;
-            } catch(e) {
+            } catch (e) {
                 console.warn(`Could not set ${otherFieldName} options:`, e);
             }
 
