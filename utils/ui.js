@@ -12,7 +12,8 @@ OHCHR.initBackToTop = function (options = {}) {
         return;
     }
 
-    if (btn._initialized) return;
+    if (btn.dataset.initialized) return;
+    btn.dataset.initialized = "true";
     btn._initialized = true;
 
     window.addEventListener('scroll', () => {
@@ -23,3 +24,29 @@ OHCHR.initBackToTop = function (options = {}) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 };
+
+if (!window._backToTopCssInjected) {
+    window._backToTopCssInjected = true;
+
+    const style = document.createElement('style');
+    style.textContent = `
+#backToTop {
+    display: none;
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 9999;
+    padding: 10px 14px;
+    border: 0;
+    border-radius: 4px;
+    background: #005eb8;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+}
+#backToTop:hover {
+    background: #004b93;
+}
+`;
+    document.head.appendChild(style);
+}
