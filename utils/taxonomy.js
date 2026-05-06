@@ -130,7 +130,10 @@ OHCHR.matchPrefixedValues = function(values, availableItems) {
 
 OHCHR.setMultiValue = function(fieldName, values) {
     const field = fd.field(fieldName);
-    if (!field) continue;
+    if (!field) {
+        console.warn(`Field not found: ${fieldName}`);
+        return;
+    }
     const arr = OHCHR.ensureArray(values).filter(Boolean);
 
     if (!field) {
