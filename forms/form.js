@@ -36,8 +36,10 @@ function initRichTextCleaners(config = []) {
         languages.forEach(lang => {
             const field = fd.field(`${item.prefix}${lang}`);
             if (!field) return;
-
-            attachRichTextCleaner(field, item.options);
+            
+            field.ready().then(function () {
+                attachRichTextCleaner(field, item.options);
+            });
         });
     });
 }
