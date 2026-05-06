@@ -24,7 +24,7 @@ OHCHR.createRichTextToolbar = function(options = {}) {
             exec: function(e) {
                 const editor = e.sender;
                 editor.exec("inserthtml", { value: "<br/>" });
-            }
+            },
             template: '<a class="k-button k-tool k-group-start k-group-end" role="button" title="Insert Line Break" aria-label="Insert Line Break" style="color:black;"><span class="k-icon k-i-insert-m"></span></a>'
         });
     }
