@@ -114,3 +114,36 @@ OHCHR.normalizeLabel = function(value) {
         .replace(/^[・‣\s]+/, '')
         .trim();
 };
+
+OHCHR.matchPrefixedValues = function(values, availableItems) {
+    const map = new Map(
+        OHCHR.ensureArray(availableItems).map(item => [
+            OHCHR.normalizeLabel(item),
+            item
+        ])
+    );
+
+    return OHCHR.ensureArray(values)
+        .map(v => map.get(OHCHR.normalizeLabel(v)) || v)
+        .filter(Boolean);
+};
+
+OHCHR.setMultiValue = function(fieldName, values) {
+    const field = fd.field(fieldName);
+    if (!field) continue;
+    const arr = OHCHR.ensureArray(values).filter(Boolean);
+
+    if (!field) {
+        console.warn(`Field not found: ${fieldName}`);
+        return;
+    }
+
+    console.log(`Setting ${fieldName}:`, arr);
+
+    field.value = arr;
+
+    if (field.widget) {
+        field.widget.value(arr);
+        field.widget.trigger('change');
+    }
+};
