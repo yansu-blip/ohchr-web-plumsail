@@ -16,9 +16,12 @@ OHCHR.escapeHtml = function(str) {
 };
 
 OHCHR.setFieldValue = function(fieldName, value) {
-    if (!fd.field(fieldName)) {
+    const field = fd.field(fieldName);
+
+    if (!field) {
         console.warn(`Field not found: ${fieldName}`);
         return;
     }
-    fd.field(fieldName).value = value;
+
+    field.value = value;
 };
