@@ -54,14 +54,16 @@ OHCHR.initRichTextEditors = function(config = {}) {
     const fields = config.fields || [];
 
     fields.forEach(function(item) {
-        const languages = item.languages || [""];
+        const languages = item.languages?.length ? item.languages : [""];
 
         languages.forEach(function(lang) {
             const fieldName = `${item.prefix}${lang}`;
             const field = fd.field(fieldName);
 
             if (field) {
-                field.widgetOptions = OHCHR.createRichTextToolbar(item);
+                field.ready().then(function() {
+                    field.widgetOptions = OHCHR.createRichTextToolbar(item);
+                });
             }
         });
     });
