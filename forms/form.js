@@ -1,11 +1,8 @@
 fd.rendered(async function () {
     try {
-        await OHCHR.initializeDropdowns();
-
-        OHCHR.initRichTextEditors();
-
+        await OHCHR.initializeDropdowns(window.OHCHR_FORM_CONFIG?.dropdowns);
+        OHCHR.initRichTextEditors(window.OHCHR_FORM_CONFIG?.richTextEditors);        
         initRichTextCleaners(window.OHCHR_FORM_CONFIG?.richTextCleaners || []);
-
         console.log('Form initialized successfully.');
     } catch (error) {
         console.error('Error initializing Statements form:', error);
