@@ -22,7 +22,18 @@ OHCHR.createRichTextToolbar = function(options = {}) {
     if (options.lineBreak) {
         tools.push({
             exec: function(e) {
-                const editor = e.sender;
+                const $k = window.kendo?.jQuery;
+                if (!$k) {
+                    console.warn("kendo.jQuery not available");
+                    return;
+                }
+
+                const editor = $k(this).data("kendoEditor");
+                if (!editor) {
+                    console.warn("Kendo Editor not found for line break button.");
+                    return;
+                }
+
                 editor.exec("inserthtml", { value: "<br/>" });
             },
             template: '<a class="k-button k-tool k-group-start k-group-end" role="button" title="Insert Line Break" aria-label="Insert Line Break" style="color:black;"><span class="k-icon k-i-insert-m"></span></a>'
