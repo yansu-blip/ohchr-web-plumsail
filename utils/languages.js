@@ -1,3 +1,5 @@
+window.OHCHR = window.OHCHR || {};
+
 OHCHR.UN_LANGUAGES = ['English', 'French', 'Spanish', 'Arabic', 'Russian', 'Chinese'];
 
 OHCHR.LANG_CODE_MAP = {
