@@ -18,9 +18,19 @@ OHCHR.LANG_LOCALE_MAP = {
     Chinese: 'zh-CN'
 };
 
-OHCHR.getActiveLangs = function() {
-    const orig = fd.field('OriginalLanguage')?.value;
-    const others = OHCHR.ensureArray(fd.field('OtherUNLanguages')?.value);
-    const active = orig ? [orig, ...others.filter(l => l !== orig)] : [...others];
-    return active.filter(Boolean);
+OHCHR.getActiveLangs = function(config = {}) {
+    const originalField = config.originalField || 'OriginalLanguage';
+    const otherFields = config.otherFields || ['OtherUNLanguages'];
+
+    const orig = fd.field(originalField)?.value;
+
+    const others = otherFields.flatMap(fieldName =>
+        OHCHR.ensureArray(fd.field(fieldName)?.value)
+    );
+
+    const active = orig
+        ? [orig, ...others.filter(lang => lang !== orig)]
+        : [...others];
+
+    return [...new Set(active.filter(Boolean))];
 };
