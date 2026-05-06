@@ -1,12 +1,16 @@
 window.OHCHR = window.OHCHR || {};
 
 OHCHR.initBackToTop = function (options = {}) {
+
+    options = options || {};
+
     const {
         buttonId = 'backToTop',
-        showAfter = 200
+        showAfter = 20
     } = options;
 
     const btn = document.getElementById(buttonId);
+
     if (!btn) {
         console.warn(`BackToTop: element #${buttonId} not found`);
         return;
@@ -14,7 +18,6 @@ OHCHR.initBackToTop = function (options = {}) {
 
     if (btn.dataset.initialized) return;
     btn.dataset.initialized = "true";
-    btn._initialized = true;
 
     window.addEventListener('scroll', () => {
         btn.style.display = window.scrollY > showAfter ? 'block' : 'none';
