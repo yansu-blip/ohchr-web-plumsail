@@ -1,26 +1,68 @@
-OHCHR.initRichTextEditors = function() {
+OHCHR.createRichTextToolbar = function(options = {}) {
+    const headings = options.headings || ["h5", "p"];
+
+    const headingLabels = {
+        h3: "Heading-Large",
+        h4: "Heading-Medium",
+        h5: "Heading-Small",
+        p: "Paragraph"
+    };
+
+    const tools = [
+        "undo", "redo",
+        {
+            name: "formatting",
+            items: headings.map(tag => ({
+                text: headingLabels[tag] || tag,
+                value: tag
+            }))
+        }
+    ];
+
+    if (options.lineBreak) {
+        tools.push({
+            exec: function() {
+                var editor = $(this).data("kendoEditor");
+                editor.exec("inserthtml", { value: "<br/>" });
+            },
+            template: '<a class="k-button k-tool k-group-start k-group-end" role="button" title="Insert Line Break" aria-label="Insert Line Break" style="color:black;"><span class="k-icon k-i-insert-m"></span></a>'
+        });
+    }
+
+    tools.push("bold");
+
+    if (options.italic !== false) {
+        tools.push("italic");
+    }
+
+    tools.push(
+        "superscript",
+        "createLink",
+        "unlink",
+        "insertUnorderedList",
+        "insertOrderedList",
+        "viewHtml"
+    );
+
+    return { tools };
+};
+
+OHCHR.initRichTextEditors = function(config = {}) {
     if (window._renderedRichTextOptions) return;
     window._renderedRichTextOptions = true;
 
-    const mainBodyToolbar = {
-        tools: [
-            'undo', 'redo',
-            {
-                name: 'formatting',
-                items: [
-                    { text: "Heading-Large",  value: "h3" },
-                    { text: "Heading-Medium", value: "h4" },
-                    { text: "Heading-Small",  value: "h5" },
-                    { text: "Paragraph",      value: "p"  }
-                ]
-            },
-            'bold', 'italic', 'superscript', 'createLink', 'unlink',
-            'insertUnorderedList', 'insertOrderedList', 'viewHtml'
-        ]
-    };
+    const fields = config.fields || [];
 
-    OHCHR.UN_LANGUAGES.forEach(function(lang) {
-        const mainBody = fd.field(`MainBody${lang}`);
-        if (mainBody) mainBody.widgetOptions = mainBodyToolbar;
+    fields.forEach(function(item) {
+        const languages = item.languages || [""];
+
+        languages.forEach(function(lang) {
+            const fieldName = `${item.prefix}${lang}`;
+            const field = fd.field(fieldName);
+
+            if (field) {
+                field.widgetOptions = OHCHR.createRichTextToolbar(item);
+            }
+        });
     });
 };
