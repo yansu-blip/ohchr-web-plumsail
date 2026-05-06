@@ -4,19 +4,7 @@ fd.rendered(async function () {
 
         OHCHR.initRichTextEditors();
 
-        initRichTextCleaners([
-            {
-                prefix: 'MainBody',
-                languages: UN_LANGUAGES
-            },
-            {
-                prefix: 'Boilerplate',
-                languages: UN_LANGUAGES,
-                options: {
-                    removeEm: true
-                }
-            }
-        ]);
+        initRichTextCleaners(window.OHCHR_FORM_CONFIG?.richTextCleaners || []);
 
         console.log('Form initialized successfully.');
     } catch (error) {
