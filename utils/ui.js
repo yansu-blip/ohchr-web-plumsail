@@ -33,7 +33,7 @@ if (!window._backToTopCssInjected) {
 
     const style = document.createElement('style');
     style.textContent = `
-#back-to-top {
+#backToTop {
     position: fixed;
     bottom: 30px;
     left: 50%;
@@ -50,7 +50,7 @@ if (!window._backToTopCssInjected) {
     transition: background-color 0.3s, opacity 0.3s;
   }
 
-#back-to-top:hover {
+#backToTop:hover {
     background-color: #005a9e;
 }
 `;
