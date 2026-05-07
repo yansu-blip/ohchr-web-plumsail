@@ -1,12 +1,14 @@
 window.OHCHR = window.OHCHR || {};
 
-OHCHR.ensureArray = function(value) {
+OHCHR.Core = OHCHR.Core || {};
+
+OHCHR.Core.ensureArray = function(value) {
     if (Array.isArray(value)) return value;
     if (value === null || value === undefined || value === '') return [];
     return [value];
 };
 
-OHCHR.escapeHtml = function(str) {
+OHCHR.Core.escapeHtml = function(str) {
     return String(str || '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -15,13 +17,23 @@ OHCHR.escapeHtml = function(str) {
         .replace(/'/g, '&#39;');
 };
 
-OHCHR.setFieldValue = function(fieldName, value) {
-    const field = fd.field(fieldName);
+OHCHR.ensureArray = OHCHR.Core.ensureArray;
+OHCHR.escapeHtml = OHCHR.Core.escapeHtml;
+
+// Backward-compatible field helper. New code should load /modules/plumsail-fields.js.
+OHCHR.setFieldValue = function(fieldName, value, form) {
+    if (OHCHR.PlumsailFields) {
+        return OHCHR.PlumsailFields.setValue(form || window.fd, fieldName, value);
+    }
+
+    const activeForm = form || window.fd;
+    const field = activeForm?.field?.(fieldName);
 
     if (!field) {
         console.warn(`Field not found: ${fieldName}`);
-        return;
+        return null;
     }
 
     field.value = value;
+    return field;
 };
