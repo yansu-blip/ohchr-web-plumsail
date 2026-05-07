@@ -19,10 +19,12 @@ OHCHR.LanguageAccordions.normalizeConfig = function(config = {}) {
         autoExpandNew: config.autoExpandNew !== false,
         applyDirections: config.applyDirections !== false,
         rtlLanguages: config.rtlLanguages || ['Arabic'],
-        itemSelector: config.itemSelector || '.fd-accordion__item, .accordion-item, [class*="accordion-item"], .k-panelbar > .k-item, .k-item[role="treeitem"]',
-        headerSelector: config.headerSelector || 'button, h3, h4, .fd-accordion__header, [class*="header"], .k-link',
+        hiddenClass: config.hiddenClass || 'ohchr-language-accordion-hidden',
+        itemSelector: config.itemSelector || '.fd-accordion__item, .fd-accordion-item, .accordion-item, [class*="accordion-item"], [class*="AccordionItem"], .k-panelbar > .k-item, .k-panelbar .k-item, .k-item[role="treeitem"], li[role="treeitem"], .panel, .card',
+        headerSelector: config.headerSelector || 'button, h3, h4, .fd-accordion__header, [class*="header"], [class*="title"], [class*="Title"], .k-link',
         contentSelector: config.contentSelector || '.fd-accordion__content, .accordion-content, [class*="accordion-body"], [class*="accordion-content"], .k-content',
         refreshDelays: Array.isArray(config.refreshDelays) ? config.refreshDelays : [150, 500],
+        debug: config.debug === true,
         stateKey: config.stateKey || 'default'
     };
 };
@@ -82,6 +84,22 @@ OHCHR.LanguageAccordions.getJQuery = function() {
     return window.jQuery || window.$ || null;
 };
 
+OHCHR.LanguageAccordions.log = function(settings, ...args) {
+    if (settings.debug && window.console) {
+        console.log('[OHCHR LanguageAccordions]', ...args);
+    }
+};
+
+OHCHR.LanguageAccordions.injectCss = function(settings) {
+    const styleId = 'ohchr-language-accordion-css';
+    if (document.getElementById(styleId)) return;
+
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `.${settings.hiddenClass} { display: none !important; }`;
+    document.head.appendChild(style);
+};
+
 OHCHR.LanguageAccordions.getPanel = function(form, lang, config = {}) {
     const activeForm = form || window.fd;
     const settings = OHCHR.LanguageAccordions.normalizeConfig(config);
@@ -131,10 +149,36 @@ OHCHR.LanguageAccordions.findAccordionItem = function(form, lang, config = {}) {
         return undefined;
     });
 
+    if (match) return match;
+
+    $(wrapper.$el).find(settings.headerSelector).each(function() {
+        const headerText = $(this).text().trim();
+
+        if (!headerText.toLowerCase().includes(String(lang).toLowerCase())) {
+            return undefined;
+        }
+
+        const $header = $(this);
+        const $item = $header.closest(settings.itemSelector);
+
+        if ($item.length) {
+            match = $item[0];
+            return false;
+        }
+
+        const $fallback = $header.closest('li, section, article, .panel, .card, div');
+        if ($fallback.length) {
+            match = $fallback[0];
+            return false;
+        }
+
+        return undefined;
+    });
+
     return match;
 };
 
-OHCHR.LanguageAccordions.getPanelItem = function(panel, config = {}) {
+OHCHR.LanguageAccordions.getPanelItem = function(panel, lang, config = {}) {
     const $ = OHCHR.LanguageAccordions.getJQuery();
     const settings = OHCHR.LanguageAccordions.normalizeConfig(config);
 
@@ -143,7 +187,43 @@ OHCHR.LanguageAccordions.getPanelItem = function(panel, config = {}) {
     const $panel = $(panel.$el);
     const $item = $panel.closest(settings.itemSelector);
 
-    return $item.length ? $item : $panel;
+    if ($item.length) return $item;
+
+    const headerItem = OHCHR.LanguageAccordions.findAccordionItem(window.fd, lang, settings);
+    if (headerItem) return $(headerItem);
+
+    return $panel;
+};
+
+OHCHR.LanguageAccordions.setPanelVisible = function(panel, isVisible, settings) {
+    if (!panel) return;
+
+    try {
+        if ('hidden' in panel) {
+            panel.hidden = !isVisible;
+        }
+    } catch (e) {}
+
+    try {
+        if (isVisible && typeof panel.show === 'function') {
+            panel.show();
+        } else if (!isVisible && typeof panel.hide === 'function') {
+            panel.hide();
+        }
+    } catch (e) {}
+
+    try {
+        if ('visible' in panel) {
+            panel.visible = isVisible;
+        }
+    } catch (e) {}
+};
+
+OHCHR.LanguageAccordions.setElementVisible = function($element, isVisible, settings) {
+    if (!$element || !$element.length) return;
+
+    $element.toggleClass(settings.hiddenClass, !isVisible);
+    $element.attr('aria-hidden', String(!isVisible));
 };
 
 OHCHR.LanguageAccordions.expandPanel = function(form, lang, config = {}) {
@@ -160,7 +240,7 @@ OHCHR.LanguageAccordions.expandPanel = function(form, lang, config = {}) {
             }
 
             if ($ && panel.$el) {
-                const $panel = OHCHR.LanguageAccordions.getPanelItem(panel, settings);
+                const $panel = OHCHR.LanguageAccordions.getPanelItem(panel, lang, settings);
                 const $header = $panel.find(settings.headerSelector).first();
                 const isExpanded = $header.attr('aria-expanded') === 'true'
                     || $panel.hasClass('is-open')
@@ -229,6 +309,9 @@ OHCHR.LanguageAccordions.updateVisibility = function(form, config = {}) {
     const settings = OHCHR.LanguageAccordions.normalizeConfig(config);
     const active = OHCHR.LanguageAccordions.getActiveLanguages(form, settings);
 
+    OHCHR.LanguageAccordions.injectCss(settings);
+    OHCHR.LanguageAccordions.log(settings, 'active languages', active);
+
     window._accordionPreviouslyActive = window._accordionPreviouslyActive || {};
     const previous = window._accordionPreviouslyActive[settings.stateKey] || [];
 
@@ -239,10 +322,12 @@ OHCHR.LanguageAccordions.updateVisibility = function(form, config = {}) {
         try {
             const panel = OHCHR.LanguageAccordions.getPanel(form, lang, settings);
 
+            OHCHR.LanguageAccordions.setPanelVisible(panel, isActive, settings);
+
             if ($ && panel && panel.$el) {
-                const $panelItem = OHCHR.LanguageAccordions.getPanelItem(panel, settings);
-                $panelItem.toggle(isActive);
-                $panelItem.attr('aria-hidden', String(!isActive));
+                const $panelItem = OHCHR.LanguageAccordions.getPanelItem(panel, lang, settings);
+                OHCHR.LanguageAccordions.setElementVisible($panelItem, isActive, settings);
+                OHCHR.LanguageAccordions.log(settings, lang, isActive ? 'shown' : 'hidden', $panelItem[0]);
 
                 if (settings.autoExpandNew && isActive && !wasActive) {
                     OHCHR.LanguageAccordions.expandPanel(form, lang, settings);
@@ -253,8 +338,8 @@ OHCHR.LanguageAccordions.updateVisibility = function(form, config = {}) {
 
             const item = OHCHR.LanguageAccordions.findAccordionItem(form, lang, settings);
             if ($ && item) {
-                $(item).toggle(isActive);
-                $(item).attr('aria-hidden', String(!isActive));
+                OHCHR.LanguageAccordions.setElementVisible($(item), isActive, settings);
+                OHCHR.LanguageAccordions.log(settings, lang, isActive ? 'shown by header' : 'hidden by header', item);
 
                 if (settings.autoExpandNew && isActive && !wasActive) {
                     $(item).find(settings.headerSelector).first().trigger('click');
@@ -283,6 +368,18 @@ OHCHR.LanguageAccordions.scheduleUpdate = function(form, config = {}) {
     });
 };
 
+OHCHR.LanguageAccordions.getFieldSelector = function(fieldName) {
+    const escaped = String(fieldName).replace(/\/g, '\\').replace(/"/g, '\"');
+
+    return [
+        `[name="${escaped}"]`,
+        `[data-field="${escaped}"]`,
+        `[data-field-name="${escaped}"]`,
+        `[data-name="${escaped}"]`,
+        `[id$="${escaped}"]`
+    ].join(', ');
+};
+
 OHCHR.LanguageAccordions.bind = function(form, config = {}) {
     const activeForm = form || window.fd;
     const settings = OHCHR.LanguageAccordions.normalizeConfig(config);
@@ -299,6 +396,10 @@ OHCHR.LanguageAccordions.bind = function(form, config = {}) {
         return [value];
     };
 
+    const schedule = function() {
+        OHCHR.LanguageAccordions.scheduleUpdate(activeForm, settings);
+    };
+
     const fieldNames = [
         settings.languageFields.originalField || 'OriginalLanguage',
         ...ensureArray(settings.languageFields.otherFields || settings.languageFields.otherField || 'OtherUNLanguages')
@@ -306,12 +407,40 @@ OHCHR.LanguageAccordions.bind = function(form, config = {}) {
 
     fieldNames.forEach(function(fieldName) {
         const field = activeForm.field(fieldName);
-        if (field && typeof field.$on === 'function') {
-            field.$on('change', function() {
-                OHCHR.LanguageAccordions.scheduleUpdate(activeForm, settings);
-            });
+        const bindField = function() {
+            if (!field) return;
+
+            if (typeof field.$on === 'function') {
+                field.$on('change', schedule);
+            }
+
+            if (field.widget && typeof field.widget.bind === 'function') {
+                field.widget.bind('change', schedule);
+            }
+
+            if (field.widget && field.widget.element && typeof field.widget.element.on === 'function') {
+                field.widget.element.on(`change.${settings.stateKey} input.${settings.stateKey}`, schedule);
+            }
+        };
+
+        bindField();
+
+        if (field && typeof field.ready === 'function') {
+            field.ready().then(bindField);
         }
     });
+
+    const $ = OHCHR.LanguageAccordions.getJQuery();
+    if ($) {
+        const namespace = `.ohchrLanguageAccordions${String(settings.stateKey).replace(/\W/g, '')}`;
+        $(document).off(namespace);
+
+        fieldNames.forEach(function(fieldName) {
+            $(document).on(`change${namespace} input${namespace} click${namespace}`, OHCHR.LanguageAccordions.getFieldSelector(fieldName), function() {
+                window.setTimeout(schedule, 0);
+            });
+        });
+    }
 };
 
 OHCHR.LanguageAccordions.init = function(form, config = {}) {
@@ -349,3 +478,17 @@ window.updateAccordionVisibility = function() {
 window.applyAccordionDirections = function() {
     return OHCHR.applyAccordionDirections(window.fd, window.OHCHR_FORM_CONFIG?.languageAccordions);
 };
+
+OHCHR.LanguageAccordions.autoInit = function() {
+    const form = window.fd || (typeof fd !== 'undefined' ? fd : null);
+    const config = window.OHCHR_FORM_CONFIG?.languageAccordions;
+
+    if (form && config) {
+        OHCHR.initLanguageAccordions(form, config);
+    }
+};
+
+if (window.OHCHR_FORM_CONFIG?.languageAccordions) {
+    window.setTimeout(OHCHR.LanguageAccordions.autoInit, 0);
+    window.setTimeout(OHCHR.LanguageAccordions.autoInit, 500);
+}
