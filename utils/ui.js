@@ -33,22 +33,25 @@ if (!window._backToTopCssInjected) {
 
     const style = document.createElement('style');
     style.textContent = `
-#backToTop {
-    display: none;
+#back-to-top {
     position: fixed;
-    right: 24px;
-    bottom: 24px;
-    z-index: 9999;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #0078d4;
+    color: white;
     padding: 10px 14px;
-    border: 0;
-    border-radius: 4px;
-    background: #005eb8;
-    color: #fff;
-    font-weight: 600;
+    border-radius: 6px;
     cursor: pointer;
-}
-#backToTop:hover {
-    background: #004b93;
+    font-size: 14px;
+    font-weight: 700;
+    z-index: 9999;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    transition: background-color 0.3s, opacity 0.3s;
+  }
+
+#back-to-top:hover {
+    background-color: #005a9e;
 }
 `;
     document.head.appendChild(style);
