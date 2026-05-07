@@ -80,6 +80,8 @@ fd.rendered(async function() {
         await loadScript(`${baseUrl}/modules/back-to-top.js`);
 
         await loadScript(`${baseUrl}/forms/form.js`);
+
+        OHCHR.initBackToTop(window.OHCHR_FORM_CONFIG?.ui?.backToTop);
     } catch (err) {
         console.error('OHCHR form initialization failed:', err);
     }
