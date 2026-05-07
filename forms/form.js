@@ -6,6 +6,8 @@
             throw new Error('Plumsail form object is not available.');
         }
 
+        await OHCHR.initLanguageFields(window.OHCHR_FORM_CONFIG?.languages, form);
+
         await OHCHR.initializeDropdowns(window.OHCHR_FORM_CONFIG?.dropdowns, form);
 
         await OHCHR.initRichTextEditors(window.OHCHR_FORM_CONFIG?.richTextEditors, form);
