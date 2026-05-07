@@ -45,7 +45,7 @@ OHCHR.LanguageAccordions.normalizeLanguageName = function(value) {
     ).trim();
 };
 
-OHCHR.LanguageAccordions.languageMatches = function(left, right) {
+OHCHR.LanguageAaccordions.languageMatches = function(left, right) {
     return OHCHR.LanguageAccordions.normalizeLanguageName(left).toLowerCase()
         === OHCHR.LanguageAccordions.normalizeLanguageName(right).toLowerCase();
 };
@@ -271,224 +271,4 @@ OHCHR.LanguageAccordions.applyDirections = function(form, config = {}) {
         const dir = settings.rtlLanguages.includes(lang) ? 'rtl' : 'ltr';
 
         try {
-            const panel = OHCHR.LanguageAccordions.getPanel(form, lang, settings);
-
-            if (panel && panel.$el) {
-                const $panel = $(panel.$el);
-                $panel.find('input[type="text"], input:not([type]), textarea, select').attr('dir', dir);
-                $panel.find('iframe').each(function() {
-                    try {
-                        $(this).contents().find('body').attr('dir', dir);
-                    } catch (e) {}
-                });
-                $panel.find(settings.contentSelector)
-                    .first()
-                    .attr('dir', dir);
-                return;
-            }
-
-            const item = OHCHR.LanguageAccordions.findAccordionItem(form, lang, settings);
-            if (!item) return;
-
-            const $item = $(item);
-            $item.find('input[type="text"], input:not([type]), textarea, select').attr('dir', dir);
-            $item.find('iframe').each(function() {
-                try {
-                    $(this).contents().find('body').attr('dir', dir);
-                } catch (e) {}
-            });
-            $item.find(settings.contentSelector).first().attr('dir', dir);
-        } catch (e) {
-            console.warn('applyAccordionDirections error for', lang, ':', e);
-        }
-    });
-};
-
-OHCHR.LanguageAccordions.updateVisibility = function(form, config = {}) {
-    const $ = OHCHR.LanguageAccordions.getJQuery();
-    const settings = OHCHR.LanguageAccordions.normalizeConfig(config);
-    const active = OHCHR.LanguageAccordions.getActiveLanguages(form, settings);
-
-    OHCHR.LanguageAccordions.injectCss(settings);
-    OHCHR.LanguageAccordions.log(settings, 'active languages', active);
-
-    window._accordionPreviouslyActive = window._accordionPreviouslyActive || {};
-    const previous = window._accordionPreviouslyActive[settings.stateKey] || [];
-
-    settings.languages.forEach(function(lang) {
-        const isActive = active.some(activeLang => OHCHR.LanguageAccordions.languageMatches(activeLang, lang));
-        const wasActive = previous.some(previousLang => OHCHR.LanguageAccordions.languageMatches(previousLang, lang));
-
-        try {
-            const panel = OHCHR.LanguageAccordions.getPanel(form, lang, settings);
-
-            OHCHR.LanguageAccordions.setPanelVisible(panel, isActive, settings);
-
-            if ($ && panel && panel.$el) {
-                const $panelItem = OHCHR.LanguageAccordions.getPanelItem(panel, lang, settings);
-                OHCHR.LanguageAccordions.setElementVisible($panelItem, isActive, settings);
-                OHCHR.LanguageAccordions.log(settings, lang, isActive ? 'shown' : 'hidden', $panelItem[0]);
-
-                if (settings.autoExpandNew && isActive && !wasActive) {
-                    OHCHR.LanguageAccordions.expandPanel(form, lang, settings);
-                }
-
-                return;
-            }
-
-            const item = OHCHR.LanguageAccordions.findAccordionItem(form, lang, settings);
-            if ($ && item) {
-                OHCHR.LanguageAccordions.setElementVisible($(item), isActive, settings);
-                OHCHR.LanguageAccordions.log(settings, lang, isActive ? 'shown by header' : 'hidden by header', item);
-
-                if (settings.autoExpandNew && isActive && !wasActive) {
-                    $(item).find(settings.headerSelector).first().trigger('click');
-                }
-            }
-        } catch (e) {
-            console.warn('updateAccordionVisibility error for', lang, ':', e);
-        }
-    });
-
-    window._accordionPreviouslyActive[settings.stateKey] = [...active];
-
-    OHCHR.LanguageAccordions.applyDirections(form, settings);
-};
-
-OHCHR.LanguageAccordions.scheduleUpdate = function(form, config = {}) {
-    const activeForm = form || window.fd;
-    const settings = OHCHR.LanguageAccordions.normalizeConfig(config);
-
-    OHCHR.LanguageAccordions.updateVisibility(activeForm, settings);
-
-    settings.refreshDelays.forEach(function(delay) {
-        window.setTimeout(function() {
-            OHCHR.LanguageAccordions.updateVisibility(activeForm, settings);
-        }, delay);
-    });
-};
-
-OHCHR.LanguageAccordions.getFieldSelector = function(fieldName) {
-    const escaped = String(fieldName).replace(/\/g, '\\').replace(/"/g, '\"');
-
-    return [
-        `[name="${escaped}"]`,
-        `[data-field="${escaped}"]`,
-        `[data-field-name="${escaped}"]`,
-        `[data-name="${escaped}"]`,
-        `[id$="${escaped}"]`
-    ].join(', ');
-};
-
-OHCHR.LanguageAccordions.bind = function(form, config = {}) {
-    const activeForm = form || window.fd;
-    const settings = OHCHR.LanguageAccordions.normalizeConfig(config);
-
-    if (!activeForm || typeof activeForm.field !== 'function') return;
-
-    window._languageAccordionsInitialized = window._languageAccordionsInitialized || {};
-    if (window._languageAccordionsInitialized[settings.stateKey]) return;
-    window._languageAccordionsInitialized[settings.stateKey] = true;
-
-    const ensureArray = OHCHR.ensureArray || function(value) {
-        if (Array.isArray(value)) return value;
-        if (value === null || value === undefined || value === '') return [];
-        return [value];
-    };
-
-    const schedule = function() {
-        OHCHR.LanguageAccordions.scheduleUpdate(activeForm, settings);
-    };
-
-    const fieldNames = [
-        settings.languageFields.originalField || 'OriginalLanguage',
-        ...ensureArray(settings.languageFields.otherFields || settings.languageFields.otherField || 'OtherUNLanguages')
-    ];
-
-    fieldNames.forEach(function(fieldName) {
-        const field = activeForm.field(fieldName);
-        const bindField = function() {
-            if (!field) return;
-
-            if (typeof field.$on === 'function') {
-                field.$on('change', schedule);
-            }
-
-            if (field.widget && typeof field.widget.bind === 'function') {
-                field.widget.bind('change', schedule);
-            }
-
-            if (field.widget && field.widget.element && typeof field.widget.element.on === 'function') {
-                field.widget.element.on(`change.${settings.stateKey} input.${settings.stateKey}`, schedule);
-            }
-        };
-
-        bindField();
-
-        if (field && typeof field.ready === 'function') {
-            field.ready().then(bindField);
-        }
-    });
-
-    const $ = OHCHR.LanguageAccordions.getJQuery();
-    if ($) {
-        const namespace = `.ohchrLanguageAccordions${String(settings.stateKey).replace(/\W/g, '')}`;
-        $(document).off(namespace);
-
-        fieldNames.forEach(function(fieldName) {
-            $(document).on(`change${namespace} input${namespace} click${namespace}`, OHCHR.LanguageAccordions.getFieldSelector(fieldName), function() {
-                window.setTimeout(schedule, 0);
-            });
-        });
-    }
-};
-
-OHCHR.LanguageAccordions.init = function(form, config = {}) {
-    const activeForm = form || window.fd;
-    const settings = OHCHR.LanguageAccordions.normalizeConfig(config);
-
-    OHCHR.LanguageAccordions.bind(activeForm, settings);
-    OHCHR.LanguageAccordions.scheduleUpdate(activeForm, settings);
-};
-
-OHCHR.initLanguageAccordions = function(form, config = {}) {
-    return OHCHR.LanguageAccordions.init(form || window.fd, config);
-};
-
-OHCHR.expandAccordionPanel = function(lang, form, config = {}) {
-    return OHCHR.LanguageAccordions.expandPanel(form || window.fd, lang, config);
-};
-
-OHCHR.updateAccordionVisibility = function(form, config = {}) {
-    return OHCHR.LanguageAccordions.updateVisibility(form || window.fd, config);
-};
-
-OHCHR.applyAccordionDirections = function(form, config = {}) {
-    return OHCHR.LanguageAccordions.applyDirections(form || window.fd, config);
-};
-
-window.expandAccordionPanel = function(lang) {
-    return OHCHR.expandAccordionPanel(lang, window.fd, window.OHCHR_FORM_CONFIG?.languageAccordions);
-};
-
-window.updateAccordionVisibility = function() {
-    return OHCHR.updateAccordionVisibility(window.fd, window.OHCHR_FORM_CONFIG?.languageAccordions);
-};
-
-window.applyAccordionDirections = function() {
-    return OHCHR.applyAccordionDirections(window.fd, window.OHCHR_FORM_CONFIG?.languageAccordions);
-};
-
-OHCHR.LanguageAccordions.autoInit = function() {
-    const form = window.fd || (typeof fd !== 'undefined' ? fd : null);
-    const config = window.OHCHR_FORM_CONFIG?.languageAccordions;
-
-    if (form && config) {
-        OHCHR.initLanguageAccordions(form, config);
-    }
-};
-
-if (window.OHCHR_FORM_CONFIG?.languageAccordions) {
-    window.setTimeout(OHCHR.LanguageAccordions.autoInit, 0);
-    window.setTimeout(OHCHR.LanguageAccordions.autoInit, 500);
-}
+            const panel = OHCHR.LanguageAccordions.getPanel(form, lang%°€œèœ°”¤ì(€€€€€€€ô(€€€ô¤ì)ôì()=!!H¹1…¹Õ…•½É‘¥½¹Ì¹ÕÁ‘…Ñ•Y¥Í¥‰¥±¥Ñä€ô™Õ¹Ñ¥½¸¡™½É´°½¹™¥œ€ôíô¤ì(€€€½¹ÍĞ€€ô=!!H¹1…¹Õ…•½É‘¥½¹Ì¹•Ñ)EÕ•Éä ¤ì(€€€½¹ÍĞÍ•ÑÑ¥¹Ì€ô=!!H¹1…¹Õ…•½É‘¥½¹Ì¹¹½Éµ…±¥é•½¹™¥œ¡½¹™¥œ¤ì(€€€½¹ÍĞ…Ñ¥Ù”€ô=!!H¹1…¹Õ…•½É‘¥½¹Ì¹•ÑÑ¥Ù•1…¹Õ…•Ì¡™½É´°Í•ÑÑ¥¹Ì¤ì((€€€=!!H¹1…¹Õ…•½É‘¥½¹Ì¹¥¹©•ÑÍÌ¡Í•ÑÑ¥¹Ì¤ì(€€€=!!H¹1…¹Õ…•½É‘¥½¹Ì¹±½œ¡Í•ÑÑ¥¹Ì°€…Ñ¥Ù”±…¹Õ…•Ìœ°…Ñ¥Ù”¤ì((€€€İ¥¹‘½Ü¹}…½É‘¥½¹AÉ•Ù¥½ÕÍ±åÑ¥Ù”€ôİ¥¹‘½Ü¹}…½É‘¥½¹AÉ•Ù¥½ÕÍ±åÑ¥Ù”ñğíôì(€€€½¹ÍĞÁÉ•Ù¥½ÕÌ€ôİ¥¹‘½Ü¹}…½É‘¥½¹AÉ•Ù¥½ÕÍ±åÑ¥Ù•mÍ•ÑÑ¥¹Ì¹ÍÑ…Ñ•-•åtñğmtì((€€€Í•ÑÑ¥¹Ì¹±…¹Õ…•Ì¹™½É… ¡™Õ¹Ñ¥½¸¡±…¹œ¤ì(€€€€€€€½¹ÍĞ¥ÍÑ¥Ù”€ô…Ñ¥Ù”¹Í½µ”¡…Ñ¥Ù•1…¹œ€ôø=!!H¹1…¹Õ…•½É‘¥½¹Ì¹±…¹Õ…•5…Ñ¡•Ì¡…Ñ¥Ù•1…¹œ°±…¹œ¤¤ì(€€€€€€€½¹ÍĞİ…ÍÑ¥Ù”€ôÁÉ•Ù¥½ÕÌ¹Í½µ”¡ÁÉ•Ù¥½ÕÍ1…¹œ€ôø=!!H¹1…¹Õ…•½É‘¥½¹Ì¹±…¹Õ…•5…Ñ¡•Ì¡ÁÉ•Ù¥½ÕÍ1…¹œ°±…¹œ¤¤ì((€€€€€€€ÑÉäì(€€€€€€€€€€€½¹ÍĞÁ…¹•°€ô=!!H¹1…¹Õ…•½É‘¥½¹Ì¹•ÑA…¹•°¡™½É´°±…¹œ°Í•ÑÑ¥¹Ì¤ì((€€€€€€€€€€€=!!H¹1…¹Õ…•½É‘¥½¹Ì¹Í•ÑA…¹•±Y¥Í¥‰±”¡Á…¹•°°¥ÍÑ¥Ù”°Í•ÑÑ¥¹Ì¤ì((€€€€€€€€€€€¥˜€ €˜˜Á…¹•°€˜˜Á…¹•°¸‘•°¤ì(€€€€€€€€€€€€€€€½¹ÍĞ€‘Á…¹•±%Ñ•´€ô=!!H¹1…¹Õ…•½É‘¥½¹Ì¹•ÑA…¹•±%Ñ•´¡Á…¹•°°±…¹œ°Í•ÑÑ¥¹Ì¤ì(€€€€€€€€€€€€€€€=!!H¹1…¹Õ…•½É‘¥½¹Ì¹Í•Ñ±•µ•¹ÑY¥Í¥‰±” ‘Á…¹•±%Ñ•´°¥ÍÑ¥Ù”°Í•ÑÑ¥¹Ì¤ì(€€€€€€€€€€€€€€€=!!H¹1…¹Õ…•½É‘¥½¹Ì¹±½œ¡Í•ÑÑ¥¹Ì°±…¹œ°¥ÍÑ¥Ù”€ü€Í¡½İ¸œ€è€¡¥‘‘•¸œ°€‘Á…¹•±%Ñ•µlÁt¤ì((€€€€€€€€€€€€€€€¥˜€¡Í•ÑÑ¥¹Ì¹…ÕÑ½áÁ…¹‘9•Ü€˜˜¥ÍÑ¥Ù”€˜˜€…İ…ÍÑ¥Ù”¤ì(€€€€€€€€€€€€€€€€€€€=!!H¹1…¹Õ…•½É‘¥½¹Ì¹•áÁ…¹‘A…¹•°¡™½É´°±…¹œ°Í•ÑÑ¥¹Ì¤ì(€€€€€€€€€€€€€€€ô((€€€€€€€€€€€€€€€É•ÑÕÉ¸ì(€€€€€€€€€€€ô((€€€€€€€€€€€½¹ÍĞ¥Ñ•´€ô=!!H¹1…¹Õ…•½É‘¥½¹Ì¹™¥¹‘½É‘¥½¹%Ñ•´¡™½É´°±…¹œ°Í•ÑÑ¥¹Ì¤ì(€€€€€€€€€€€¥˜€ €˜˜¥Ñ•´¤ì(€€€€€€€€€€€€€€€=!!H¹1…¹Õ…•½É‘¥½¹Ì¹Í•Ñ±•µ•¹ÑY¥Í¥‰±” ¡¥Ñ•´¤°¥ÍÑ¥Ù”°Í•ÑÑ¥¹Ì¤ì(€€€€€€€€€€€€€€€=!!H¹1…¹Õ…•½É‘¥½¹Ì¹±½œ¡Í•ÑÑ¥¹Ì°±…¹œ°¥ÍÑ¥Ù”€ü€Í¡½İ¸‰ä¡•…‘•Èœ€è€¡¥‘‘•¸‰ä¡•…‘•Èœ°¥Ñ•´¤ì((€€€€€€€€€€€€€€€¥˜€¡Í•ÑÑ¥¹Ì¹…ÕÑ½áÁ…¹‘9•Ü€˜˜¥ÍÑ¥Ù”€˜˜€…İ…ÍÑ¥Ù”¤ì(€€€€€€€€€€€€€€€€€€€€¡¥Ñ•´¤¹™¥¹¡Í•ÑÑ¥¹Ì¹¡•…‘•ÉM•±•Ñ½È¤¹™¥ÉÍĞ ¤¹ÑÉ¥•È ±¥¬œ¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô(€€€€€€€ô…Ñ €¡”¤ì(€€€€€€€€€€€½¹Í½±”¹İ…É¸ ÕÁ‘…Ñ•½É‘¥½¹Y¥Í¥‰¥±¥Ñä•ÉÉ½È™½Èœ°±…¹œ°€œèœ°”¤ì(€€€€€€€ô(€€€ô¤ì((€€€İ¥¹‘½Ü¹}…½É‘¥½¹AÉ•Ù¥½ÕÍ±åÑ¥Ù•mÍ•ÑÑ¥¹Ì¹ÍÑ…Ñ•-•åt€ôl¸¸¹…Ñ¥Ù•tì((€€€=!!H¹1…¹Õ…•½É‘¥½¹Ì¹…ÁÁ±å¥É•Ñ¥½¹Ì¡™½É´°Í•ÑÑ¥¹Ì¤ì)ôì()=!!H¹1…¹Õ…•½É‘¥½¹Ì¹Í¡•‘Õ±•UÁ‘…Ñ”€ô™Õ¹Ñ¥½¸¡™½É´°½¹™¥œ€ôíô¤ì(€€€½¹ÍĞ…Ñ¥Ù•½É´€ô™½É´ñğİ¥¹‘½Ü¹™ì(€€€½¹ÍĞÍ•ÑÑ¥¹Ì€ô=!!H¹1…¹Õ…•½É‘¥½¹Ì¹¹½Éµ…±¥é•½¹™¥œ¡½¹™¥œ¤ì((€€€=!!H¹1…¹Õ…•½É‘¥½¹Ì¹ÕÁ‘…Ñ•Y¥Í¥‰¥±¥Ñä¡…Ñ¥Ù•½É´°Í•ÑÑ¥¹Ì¤ì((€€€Í•ÑÑ¥¹Ì¹É•™É•Í¡•±…åÌ¹™½É… ¡™Õ¹Ñ¥½¸¡‘•±…ä¤ì(€€€€€€€İ¥¹‘½Ü¹Í•ÑQ¥µ•½ÕĞ¡™Õ¹Ñ¥½¸ ¤ì(€€€€€€€€€€€=!!H¹1…¹Õ…•½É‘¥½¹Ì¹ÕÁ‘…Ñ•Y¥Í¥‰¥±¥Ñä¡…Ñ¥Ù•½É´°Í•ÑÑ¥¹Ì¤ì(€€€€€€€ô°‘•±…ä¤ì(€€€ô¤ì)ôì()=!!H¹1…¹Õ…•½É‘¥½¹Ì¹•Ñ¥•±‘M•±•Ñ½È€ô™Õ¹Ñ¥½¸¡™¥•±‘9…µ”¤ì(€€€½¹ÍĞ•Í…Á•€ôMÑÉ¥¹œ¡™¥•±‘9…µ”¤¹ÍÁ±¥Ğ qpœ¤¹©½¥¸ qqqpœ¤¹ÍÁ±¥Ğ œˆœ¤¹©½¥¸ qpˆœ¤ì((€€€É•ÑÕÉ¸l(€€€€€€€m¹…µ”ôˆ‘í•Í…Á•‘ô‰u€°(€€€€€€€m‘…Ñ„µ™¥•±ôˆ‘í•Í…Á•‘ô‰u€°(€€€€€€€m‘…Ñ„µ™¥•±µ¹…µ”ôˆ‘í•Í…Á•‘ô‰u€°(€€€€€€€m‘…Ñ„µ¹…µ”ôˆ‘í•Í…Á•‘ô‰u€°(€€€€€€€m¥ôˆ‘í•Í…Á•‘ô‰u€(€€€t¹©½¥¸ œ°€œ¤ì)ôì()=!!H¹1…¹Õ…•½É‘¥½¹Ì¹‰¥¹€ô™Õ¹Ñ¥½¸¡™½É´°½¹™¥œ€ôíô¤ì(€€€½¹ÍĞ…Ñ¥Ù•½É´€ô™½É´ñğİ¥¹‘½Ü¹™ì(€€€½¹ÍĞÍ•ÑÑ¥¹Ì€ô=!!H¹1…¹Õ…•½É‘¥½¹Ì¹¹½Éµ…±¥é•½¹™¥œ¡½¹™¥œ¤ì((€€€¥˜€ ……Ñ¥Ù•½É´ñğÑåÁ•½˜…Ñ¥Ù•½É´¹™¥•±€„ôô€™Õ¹Ñ¥½¸œ¤É•ÑÕÉ¸ì((€€€İ¥¹‘½Ü¹}±…¹Õ…•½É‘¥½¹Í%¹¥Ñ¥…±¥é•€ôİ¥¹‘½Ü¹}±…¹Õ…•½É‘¥½¹Í%¹¥Ñ¥…±¥é•ñğíôì(€€€¥˜€¡İ¥¹‘½Ü¹}±…¹Õ…•½É‘¥½¹Í%¹¥Ñ¥…±¥é•‘mÍ•ÑÑ¥¹Ì¹ÍÑ…Ñ•-•åt¤É•ÑÕÉ¸ì(€€€İ¥¹‘½Ü¹}±…¹Õ…•½É‘¥½¹Í%¹¥Ñ¥…±¥é•‘mÍ•ÑÑ¥¹Ì¹ÍÑ…Ñ•-•åt€ôÑÉÕ”ì((€€€½¹ÍĞ•¹ÍÕÉ•ÉÉ…ä€ô=!!H¹•¹ÍÕÉ•ÉÉ…äñğ™Õ¹Ñ¥½¸¡Ù…±Õ”¤ì(€€€€€€€¥˜€¡ÉÉ…ä¹¥ÍÉÉ…ä¡Ù…±Õ”¤¤É•ÑÕÉ¸Ù…±Õ”ì(€€€€€€€¥˜€¡Ù…±Õ”€ôôô¹Õ±°ñğÙ…±Õ”€ôôôÕ¹‘•™¥¹•ñğÙ…±Õ”€ôôô€œœ¤É•ÑÕÉ¸mtì(€€€€€€€É•ÑÕÉ¸mÙ…±Õ•tì(€€€ôì((€€€½¹ÍĞÍ¡•‘Õ±”€ô™Õ¹Ñ¥½¸ ¤ì(€€€€€€€=!!H¹1…¹Õ…•½É‘¥½¹Ì¹Í¡•‘Õ±•UÁ‘…Ñ”¡…Ñ¥Ù•½É´°Í•ÑÑ¥¹Ì¤ì(€€€ôì((€€€½¹ÍĞ™¥•±‘9…µ•Ì€ôl(€€€€€€€Í•ÑÑ¥¹Ì¹±…¹Õ…•¥•±‘Ì¹½É¥¥¹…±¥•±ñğ€=É¥¥¹…±1…¹Õ…”œ°(€€€€€€€€¸¸¹•¹ÍÕÉ•ÉÉ…ä¡Í•ÑÑ¥¹Ì¹±…¹Õ…•¥•±‘Ì¹½Ñ¡•É¥•±‘ÌñğÍ•ÑÑ¥¹Ì¹±…¹Õ…•¥•±‘Ì¹½Ñ¡•É¥•±ñğ€=Ñ¡•ÉU91…¹Õ…•Ìœ¤(€€€tì((€€€™¥•±‘9…µ•Ì¹™½É… ¡™Õ¹Ñ¥½¸¡™¥•±‘9…µ”¤ì(€€€€€€€½¹ÍĞ™¥•±€ô…Ñ¥Ù•½É´¹™¥•±¡™¥•±‘9…µ”¤ì(€€€€€€€½¹ÍĞ‰¥¹‘¥•±€ô™Õ¹Ñ¥½¸ ¤ì(€€€€€€€€€€€¥˜€ …™¥•±¤É•ÑÕÉ¸ì((€€€€€€€€€€€¥˜€¡ÑåÁ•½˜™¥•±¸‘½¸€ôôô€™Õ¹Ñ¥½¸œ¤ì(€€€€€€€€€€€€€€€™¥•±¸‘½¸ ¡…¹”œ°Í¡•‘Õ±”¤ì(€€€€€€€€€€€ô((€€€€€€€€€€€¥˜€¡™¥•±¹İ¥‘•Ğ€˜˜ÑåÁ•½˜™¥•±¹İ¥‘•Ğ¹‰¥¹€ôôô€™Õ¹Ñ¥½¸œ¤ì(€€€€€€€€€€€€€€€™¥•±¹İ¥‘•Ğ¹‰¥¹ ¡…¹”œ°Í¡•‘Õ±”¤ì(€€€€€€€€€€€ô((€€€€€€€€€€€¥˜€¡™¥•±¹İ¥‘•Ğ€˜˜™¥•±¹İ¥‘•Ğ¹•±•µ•¹Ğ€˜˜ÑåÁ•½˜™¥•±¹İ¥‘•Ğ¹•±•µ•¹Ğ¹½¸€ôôô€™Õ¹Ñ¥½¸œ¤ì(€€€€€€€€€€€€€€€™¥•±¹İ¥‘•Ğ¹•±•µ•¹Ğ¹½¸¡¡…¹”¸‘íÍ•ÑÑ¥¹Ì¹ÍÑ…Ñ•-•åô¥¹ÁÕĞ¸‘íÍ•ÑÑ¥¹Ì¹ÍÑ…Ñ•-•åõ€°Í¡•‘Õ±”¤ì(€€€€€€€€€€€ô(€€€€€€€ôì((€€€€€€€‰¥¹‘¥•± ¤ì((€€€€€€€¥˜€¡™¥•±€˜˜ÑåÁ•½˜™¥•±¹É•…‘ä€ôôô€™Õ¹Ñ¥½¸œ¤ì(€€€€€€€€€€€™¥•±¹É•…‘ä ¤¹Ñ¡•¸¡‰¥¹‘¥•±¤ì(€€€€€€€ô(€€€ô¤ì((€€€½¹ÍĞ€€ô=!!H¹1…¹Õ…•½É‘¥½¹Ì¹•Ñ)EÕ•Éä ¤ì(€€€¥˜€ ¤ì(€€€€€€€½¹ÍĞ¹…µ•ÍÁ…”€ô€¹½¡¡É1…¹Õ…•½É‘¥½¹Ì‘íMÑÉ¥¹œ¡Í•ÑÑ¥¹Ì¹ÍÑ…Ñ•-•ä¤¹É•Á±…” ½q\½œ°€œœ¥õ€ì(€€€€€€€€¡‘½Õµ•¹Ğ¤¹½™˜¡¹…µ•ÍÁ…”¤ì((€€€€€€€™¥•±‘9…µ•Ì¹™½É… ¡™Õ¹Ñ¥½¸¡™¥•±‘9…µ”¤ì(€€€€€€€€€€€€¡‘½Õµ•¹Ğ¤¹½¸¡¡…¹”‘í¹…µ•ÍÁ…•ô¥¹ÁÕĞ‘í¹…µ•ÍÁ…•ô±¥¬‘í¹…µ•ÍÁ…•õ€°=!!H¹1…¹Õ…•½É‘¥½¹Ì¹•Ñ¥•±‘M•±•Ñ½È¡™¥•±‘9…µ”¤°™Õ¹Ñ¥½¸ ¤ì(€€€€€€€€€€€€€€€İ¥¹‘½Ü¹Í•ÑQ¥µ•½ÕĞ¡Í¡•‘Õ±”°€À¤ì(€€€€€€€€€€€ô¤ì(€€€€€€€ô¤ì(€€€ô)ôì()=!!H¹1…¹Õ…•½É‘¥½¹Ì¹¥¹¥Ğ€ô™Õ¹Ñ¥½¸¡™½É´°½¹™¥œ€ôíô¤ì(€€€½¹ÍĞ…Ñ¥Ù•½É´€ô™½É´ñğİ¥¹‘½Ü¹™ì(€€€½¹ÍĞÍ•ÑÑ¥¹Ì€ô=!!H¹1…¹Õ…•½É‘¥½¹Ì¹¹½Éµ…±¥é•½¹™¥œ¡½¹™¥œ¤ì((€€€=!!H¹1…¹Õ…•½É‘¥½¹Ì¹‰¥¹¡…Ñ¥Ù•½É´°Í•ÑÑ¥¹Ì¤ì(€€€=!!H¹1…¹Õ…•½É‘¥½¹Ì¹Í¡•‘Õ±•UÁ‘…Ñ”¡…Ñ¥Ù•½É´°Í•ÑÑ¥¹Ì¤ì)ôì()=!!H¹¥¹¥Ñ1…¹Õ…•½É‘¥½¹Ì€ô™Õ¹Ñ¥½¸¡™½É´°½¹™¥œ€ôíô¤ì(€€€É•ÑÕÉ¸=!!H¹1…¹Õ…•½É‘¥½¹Ì¹¥¹¥Ğ¡™½É´ñğİ¥¹‘½Ü¹™°½¹™¥œ¤ì)ôì()=!!H¹•áÁ…¹‘½É‘¥½¹A…¹•°€ô™Õ¹Ñ¥½¸¡±…¹œ°™½É´°½¹™¥œ€ôíô¤ì(€€€É•ÑÕÉ¸=!!H¹1…¹Õ…•½É‘¥½¹Ì¹•áÁ…¹‘A…¹•°¡™½É´ñğİ¥¹‘½Ü¹™°±…¹œ°½¹™¥œ¤ì)ôì()=!!H¹ÕÁ‘…Ñ•½É‘¥½¹Y¥Í¥‰¥±¥Ñä€ô™Õ¹Ñ¥½¸¡™½É´°½¹™¥œ€ôíô¤ì(€€€É•ÑÕÉ¸=!!H¹1…¹Õ…•½É‘¥½¹Ì¹ÕÁ‘…Ñ•Y¥Í¥‰¥±¥Ñä¡™½É´ñğİ¥¹‘½Ü¹™°½¹™¥œ¤ì)ôì()=!!H¹…ÁÁ±å½É‘¥½¹¥É•Ñ¥½¹Ì€ô™Õ¹Ñ¥½¸¡™½É´°½¹™¥œ€ôíô¤ì(€€€É•ÑÕÉ¸=!!H¹1…¹Õ…•½É‘¥½¹Ì¹…ÁÁ±å¥É•Ñ¥½¹Ì¡™½É´ñğİ¥¹‘½Ü¹™°½¹™¥œ¤ì)ôì()İ¥¹‘½Ü¹•áÁ…¹‘½É‘¥½¹A…¹•°€ô™Õ¹Ñ¥½¸¡±…¹œ¤ì(€€€É•ÑÕÉ¸=!!H¹•áÁ…¹‘½É‘¥½¹A…¹•°¡±…¹œ°İ¥¹‘½Ü¹™°İ¥¹‘½Ü¹=!!I}=I5}=9%ü¹±…¹Õ…•½É‘¥½¹Ì¤ì)ôì()İ¥¹‘½Ü¹ÕÁ‘…Ñ•½É‘¥½¹Y¥Í¥‰¥±¥Ñä€ô™Õ¹Ñ¥½¸ ¤ì(€€€É•ÑÕÉ¸=!!H¹ÕÁ‘…Ñ•½É‘¥½¹Y¥Í¥‰¥±¥Ñä¡İ¥¹‘½Ü¹™°İ¥¹‘½Ü¹=!!I}=I5}=9%ü¹±…¹Õ…•½É‘¥½¹Ì¤ì)ôì()İ¥¹‘½Ü¹…ÁÁ±å½É‘¥½¹¥É•Ñ¥½¹Ì€ô™Õ¹Ñ¥½¸ ¤ì(€€€É•ÑÕÉ¸=!!H¹…ÁÁ±å½É‘¥½¹¥É•Ñ¥½¹Ì¡İ¥¹‘½Ü¹™°İ¥¹‘½Ü¹=!!I}=I5}=9%ü¹±…¹Õ…•½É‘¥½¹Ì¤ì)ôì()=!!H¹1…¹Õ…•½É‘¥½¹Ì¹…ÕÑ½%¹¥Ğ€ô™Õ¹Ñ¥½¸ ¤ì(€€€½¹ÍĞ™½É´€ôİ¥¹‘½Ü¹™ñğ€¡ÑåÁ•½˜™€„ôô€Õ¹‘•™¥¹•œ€ü™€è¹Õ±°¤ì(€€€½¹ÍĞ½¹™¥œ€ôİ¥¹‘½Ü¹=!!I}=I5}=9%ü¹±…¹Õ…•½É‘¥½¹Ìì((€€€¥˜€¡™½É´€˜˜½¹™¥œ¤ì(€€€€€€€=!!H¹¥¹¥Ñ1…¹Õ…•½É‘¥½¹Ì¡™½É´°½¹™¥œ¤ì(€€€ô)ôì()¥˜€¡İ¥¹‘½Ü¹=!!I}=I5}=9%ü¹±…¹Õ…•½É‘¥½¹Ì¤ì(€€€İ¥¹‘½Ü¹Í•ÑQ¥µ•½ÕĞ¡=!!H¹1…¹Õ…•½É‘¥½¹Ì¹…ÕÑ½%¹¥Ğ°€À¤ì(€€€İ¥¹‘½Ü¹Í•ÑQ¥µ•½ÕĞ¡=!!H¹1…¹Õ…•½É‘¥½¹Ì¹…ÕÑ½%¹¥Ğ°€ÔÀÀ¤ì)ô(
