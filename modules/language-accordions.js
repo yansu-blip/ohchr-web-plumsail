@@ -2,19 +2,50 @@ window.OHCHR = window.OHCHR || {};
 
 OHCHR.LanguageAccordions = OHCHR.LanguageAccordions || {};
 
+OHCHR.LanguageAccordions.DEFAULT_LANGUAGES = ['English', 'French', 'Spanish', 'Arabic', 'Russian', 'Chinese'];
+
 OHCHR.LanguageAccordions.normalizeConfig = function(config = {}) {
     const languageFields = config.languageFields || window.OHCHR_FORM_CONFIG?.languages || {};
+    const languages = config.languages
+        || languageFields.languages
+        || OHCHR.UN_LANGUAGES
+        || Object.keys(OHCHR.LANG_CODE_MAP || {});
 
     return {
         containerPrefix: config.containerPrefix || 'AccordionUNLangs',
         wrapperContainer: config.wrapperContainer || 'AccordionUNLangs',
         languageFields,
-        languages: config.languages || languageFields.languages || OHCHR.UN_LANGUAGES || [],
+        languages: languages && languages.length ? languages : OHCHR.LanguageAccordions.DEFAULT_LANGUAGES,
         autoExpandNew: config.autoExpandNew !== false,
         applyDirections: config.applyDirections !== false,
         rtlLanguages: config.rtlLanguages || ['Arabic'],
+        itemSelector: config.itemSelector || '.fd-accordion__item, .accordion-item, [class*="accordion-item"], .k-panelbar > .k-item, .k-item[role="treeitem"]',
+        headerSelector: config.headerSelector || 'button, h3, h4, .fd-accordion__header, [class*="header"], .k-link',
+        contentSelector: config.contentSelector || '.fd-accordion__content, .accordion-content, [class*="accordion-body"], [class*="accordion-content"], .k-content',
+        refreshDelays: Array.isArray(config.refreshDelays) ? config.refreshDelays : [150, 500],
         stateKey: config.stateKey || 'default'
     };
+};
+
+OHCHR.LanguageAccordions.normalizeLanguageName = function(value) {
+    if (typeof value === 'string') return value.trim();
+    if (!value || typeof value !== 'object') return '';
+
+    return String(
+        value.value
+        || value.Value
+        || value.text
+        || value.Text
+        || value.LookupValue
+        || value.Title
+        || value.Name
+        || ''
+    ).trim();
+};
+
+OHCHR.LanguageAccordions.languageMatches = function(left, right) {
+    return OHCHR.LanguageAccordions.normalizeLanguageName(left).toLowerCase()
+        === OHCHR.LanguageAccordions.normalizeLanguageName(right).toLowerCase();
 };
 
 OHCHR.LanguageAccordions.getActiveLanguages = function(form, config = {}) {
@@ -22,7 +53,9 @@ OHCHR.LanguageAccordions.getActiveLanguages = function(form, config = {}) {
     const settings = OHCHR.LanguageAccordions.normalizeConfig(config);
 
     if (typeof OHCHR.getActiveLangs === 'function') {
-        return OHCHR.getActiveLangs(activeForm, settings.languageFields);
+        return OHCHR.getActiveLangs(activeForm, settings.languageFields)
+            .map(OHCHR.LanguageAccordions.normalizeLanguageName)
+            .filter(Boolean);
     }
 
     if (!activeForm || typeof activeForm.field !== 'function') return [];
@@ -42,7 +75,7 @@ OHCHR.LanguageAccordions.getActiveLanguages = function(form, config = {}) {
     const others = otherFields.flatMap(fieldName => ensureArray(activeForm.field(fieldName)?.value));
     const active = original ? [original, ...others.filter(lang => lang !== original)] : others;
 
-    return [...new Set(active.filter(Boolean))];
+    return [...new Set(active.map(OHCHR.LanguageAccordions.normalizeLanguageName).filter(Boolean))];
 };
 
 OHCHR.LanguageAccordions.getJQuery = function() {
@@ -78,13 +111,14 @@ OHCHR.LanguageAccordions.getWrapper = function(form, config = {}) {
 OHCHR.LanguageAccordions.findAccordionItem = function(form, lang, config = {}) {
     const $ = OHCHR.LanguageAccordions.getJQuery();
     const wrapper = OHCHR.LanguageAccordions.getWrapper(form, config);
+    const settings = OHCHR.LanguageAccordions.normalizeConfig(config);
 
     if (!$ || !wrapper || !wrapper.$el) return null;
 
     let match = null;
-    $(wrapper.$el).find('.fd-accordion__item, .accordion-item, [class*="accordion-item"]').each(function() {
+    $(wrapper.$el).find(settings.itemSelector).each(function() {
         const headerText = $(this)
-            .find('button, h3, h4, .fd-accordion__header, [class*="header"]')
+            .find(settings.headerSelector)
             .first()
             .text()
             .trim();
@@ -100,11 +134,24 @@ OHCHR.LanguageAccordions.findAccordionItem = function(form, lang, config = {}) {
     return match;
 };
 
+OHCHR.LanguageAccordions.getPanelItem = function(panel, config = {}) {
+    const $ = OHCHR.LanguageAccordions.getJQuery();
+    const settings = OHCHR.LanguageAccordions.normalizeConfig(config);
+
+    if (!$ || !panel || !panel.$el) return null;
+
+    const $panel = $(panel.$el);
+    const $item = $panel.closest(settings.itemSelector);
+
+    return $item.length ? $item : $panel;
+};
+
 OHCHR.LanguageAccordions.expandPanel = function(form, lang, config = {}) {
     const $ = OHCHR.LanguageAccordions.getJQuery();
+    const settings = OHCHR.LanguageAccordions.normalizeConfig(config);
 
     try {
-        const panel = OHCHR.LanguageAccordions.getPanel(form, lang, config);
+        const panel = OHCHR.LanguageAccordions.getPanel(form, lang, settings);
 
         if (panel) {
             if (typeof panel.expand === 'function') {
@@ -113,20 +160,21 @@ OHCHR.LanguageAccordions.expandPanel = function(form, lang, config = {}) {
             }
 
             if ($ && panel.$el) {
-                const $panel = $(panel.$el);
-                const $header = $panel.find('button, .fd-accordion__header, [class*="header"]').first();
+                const $panel = OHCHR.LanguageAccordions.getPanelItem(panel, settings);
+                const $header = $panel.find(settings.headerSelector).first();
                 const isExpanded = $header.attr('aria-expanded') === 'true'
                     || $panel.hasClass('is-open')
-                    || $panel.hasClass('fd-accordion__item--open');
+                    || $panel.hasClass('fd-accordion__item--open')
+                    || $panel.hasClass('k-state-active');
 
                 if (!isExpanded) $header.trigger('click');
                 return;
             }
         }
 
-        const item = OHCHR.LanguageAccordions.findAccordionItem(form, lang, config);
+        const item = OHCHR.LanguageAccordions.findAccordionItem(form, lang, settings);
         if ($ && item) {
-            $(item).find('button, .fd-accordion__header').first().trigger('click');
+            $(item).find(settings.headerSelector).first().trigger('click');
         }
     } catch (e) {
         console.warn('expandAccordionPanel error for', lang, ':', e);
@@ -153,7 +201,7 @@ OHCHR.LanguageAccordions.applyDirections = function(form, config = {}) {
                         $(this).contents().find('body').attr('dir', dir);
                     } catch (e) {}
                 });
-                $panel.find('.fd-accordion__content, .accordion-content, [class*="accordion-body"], [class*="accordion-content"]')
+                $panel.find(settings.contentSelector)
                     .first()
                     .attr('dir', dir);
                 return;
@@ -169,7 +217,7 @@ OHCHR.LanguageAccordions.applyDirections = function(form, config = {}) {
                     $(this).contents().find('body').attr('dir', dir);
                 } catch (e) {}
             });
-            $item.find('.fd-accordion__content, .accordion-content, [class*="content"]').first().attr('dir', dir);
+            $item.find(settings.contentSelector).first().attr('dir', dir);
         } catch (e) {
             console.warn('applyAccordionDirections error for', lang, ':', e);
         }
@@ -185,14 +233,16 @@ OHCHR.LanguageAccordions.updateVisibility = function(form, config = {}) {
     const previous = window._accordionPreviouslyActive[settings.stateKey] || [];
 
     settings.languages.forEach(function(lang) {
-        const isActive = active.includes(lang);
-        const wasActive = previous.includes(lang);
+        const isActive = active.some(activeLang => OHCHR.LanguageAccordions.languageMatches(activeLang, lang));
+        const wasActive = previous.some(previousLang => OHCHR.LanguageAccordions.languageMatches(previousLang, lang));
 
         try {
             const panel = OHCHR.LanguageAccordions.getPanel(form, lang, settings);
 
             if ($ && panel && panel.$el) {
-                $(panel.$el).toggle(isActive);
+                const $panelItem = OHCHR.LanguageAccordions.getPanelItem(panel, settings);
+                $panelItem.toggle(isActive);
+                $panelItem.attr('aria-hidden', String(!isActive));
 
                 if (settings.autoExpandNew && isActive && !wasActive) {
                     OHCHR.LanguageAccordions.expandPanel(form, lang, settings);
@@ -204,9 +254,10 @@ OHCHR.LanguageAccordions.updateVisibility = function(form, config = {}) {
             const item = OHCHR.LanguageAccordions.findAccordionItem(form, lang, settings);
             if ($ && item) {
                 $(item).toggle(isActive);
+                $(item).attr('aria-hidden', String(!isActive));
 
                 if (settings.autoExpandNew && isActive && !wasActive) {
-                    $(item).find('button, .fd-accordion__header').first().trigger('click');
+                    $(item).find(settings.headerSelector).first().trigger('click');
                 }
             }
         } catch (e) {
@@ -217,6 +268,19 @@ OHCHR.LanguageAccordions.updateVisibility = function(form, config = {}) {
     window._accordionPreviouslyActive[settings.stateKey] = [...active];
 
     OHCHR.LanguageAccordions.applyDirections(form, settings);
+};
+
+OHCHR.LanguageAccordions.scheduleUpdate = function(form, config = {}) {
+    const activeForm = form || window.fd;
+    const settings = OHCHR.LanguageAccordions.normalizeConfig(config);
+
+    OHCHR.LanguageAccordions.updateVisibility(activeForm, settings);
+
+    settings.refreshDelays.forEach(function(delay) {
+        window.setTimeout(function() {
+            OHCHR.LanguageAccordions.updateVisibility(activeForm, settings);
+        }, delay);
+    });
 };
 
 OHCHR.LanguageAccordions.bind = function(form, config = {}) {
@@ -244,7 +308,7 @@ OHCHR.LanguageAccordions.bind = function(form, config = {}) {
         const field = activeForm.field(fieldName);
         if (field && typeof field.$on === 'function') {
             field.$on('change', function() {
-                OHCHR.LanguageAccordions.updateVisibility(activeForm, settings);
+                OHCHR.LanguageAccordions.scheduleUpdate(activeForm, settings);
             });
         }
     });
@@ -255,7 +319,7 @@ OHCHR.LanguageAccordions.init = function(form, config = {}) {
     const settings = OHCHR.LanguageAccordions.normalizeConfig(config);
 
     OHCHR.LanguageAccordions.bind(activeForm, settings);
-    OHCHR.LanguageAccordions.updateVisibility(activeForm, settings);
+    OHCHR.LanguageAccordions.scheduleUpdate(activeForm, settings);
 };
 
 OHCHR.initLanguageAccordions = function(form, config = {}) {

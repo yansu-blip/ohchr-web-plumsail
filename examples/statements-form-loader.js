@@ -36,6 +36,7 @@ fd.rendered(async function() {
             languageAccordions: {
                 containerPrefix: 'AccordionUNLangs',
                 wrapperContainer: 'AccordionUNLangs',
+                languages: ['English', 'French', 'Spanish', 'Arabic', 'Russian', 'Chinese'],
                 autoExpandNew: true,
                 applyDirections: true,
                 rtlLanguages: ['Arabic']
