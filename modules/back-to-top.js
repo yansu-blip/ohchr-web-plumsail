@@ -36,6 +36,14 @@ OHCHR.BackToTop.injectCss = function() {
 #backToTop:hover {
     background-color: #005a9e;
 }
+
+@media (max-width: 768px) {
+    #backToTop {
+      bottom: 60px;
+      font-size: 16px;
+      padding: 12px 16px;
+    }
+}
 `;
     document.head.appendChild(style);
 };
