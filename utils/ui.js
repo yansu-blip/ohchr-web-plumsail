@@ -6,7 +6,7 @@ OHCHR.initBackToTop = function (options = {}) {
 
     const {
         buttonId = 'backToTop',
-        showAfter = 20
+        showAfter = 200
     } = options;
 
     const btn = document.getElementById(buttonId);
