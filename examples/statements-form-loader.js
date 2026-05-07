@@ -14,7 +14,8 @@ fd.rendered(async function() {
     try {
         window.fd = fd;
 
-        const baseUrl = 'https://cdn.jsdelivr.net/gh/yansu-blip/ohchr-web-plumsail@main';
+        // Use @main after this branch is merged.
+        const baseUrl = 'https://cdn.jsdelivr.net/gh/yansu-blip/ohchr-web-plumsail@refactor/module-structure';
 
         window.OHCHR_CONFIG = {
             FLOW_URL: '<POWER_AUTOMATE_FLOW_URL>'
