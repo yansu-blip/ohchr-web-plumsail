@@ -14,8 +14,7 @@ fd.rendered(async function() {
     try {
         window.fd = fd;
 
-        // Pinned to the PR branch commit for testing. Use @main after this branch is merged.
-        const baseUrl = 'https://cdn.jsdelivr.net/gh/yansu-blip/ohchr-web-plumsail@de126ffffa0505901617b38a98e9595a1d3388db';
+        const baseUrl = 'https://cdn.jsdelivr.net/gh/yansu-blip/ohchr-web-plumsail@main';
 
         window.OHCHR_CONFIG = {
             // Replace this placeholder with the full Power Automate HTTP trigger URL.
