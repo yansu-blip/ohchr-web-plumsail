@@ -19,13 +19,22 @@ OHCHR.TaxonomyDropdowns.getPrefixByDepth = function(depth) {
     return '';
 };
 
-OHCHR.TaxonomyDropdowns.getTermList = async function(vocabularyId, config = {}) {
+OHCHR.TaxonomyDropdowns.getFlowUrl = function() {
     const flowUrl = window.OHCHR_CONFIG?.FLOW_URL;
 
     if (!flowUrl) {
-        throw new Error('FLOW_URL is not defined');
+        throw new Error('FLOW_URL is not defined. Set window.OHCHR_CONFIG.FLOW_URL to the full Power Automate URL.');
     }
 
+    if (/[<>]/.test(flowUrl) || !/^https?:\/\//i.test(flowUrl)) {
+        throw new Error('FLOW_URL must be replaced with the full Power Automate URL before taxonomy dropdowns can load.');
+    }
+
+    return flowUrl;
+};
+
+OHCHR.TaxonomyDropdowns.getTermList = async function(vocabularyId, config = {}) {
+    const flowUrl = OHCHR.TaxonomyDropdowns.getFlowUrl();
     const lang = config?.lang || 'en';
     const cacheKey = `terms-${vocabularyId}-${lang}`;
     const cached = OHCHR.TaxonomyDropdowns.getCachedTerms(cacheKey);
