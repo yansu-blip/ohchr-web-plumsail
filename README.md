@@ -24,6 +24,7 @@ Reusable JavaScript modules for OHCHR Plumsail forms and web automation workflow
 
 - `modules/taxonomy-dropdowns.js` populates taxonomy dropdown fields from Power Automate.
 - `modules/language-accordions.js` shows, hides, expands, and applies text direction to language accordion panels.
+- `modules/page-url-generator.js` generates read-only OHCHR page and non-UN PDF URLs from form fields.
 - `modules/richtext-editors.js` configures Kendo rich-text editor toolbars.
 - `modules/richtext-cleaners.js` attaches paste cleanup and image blocking to rich-text editors.
 - `modules/back-to-top.js` initializes the floating Back to Top button.
@@ -34,6 +35,8 @@ Reusable JavaScript modules for OHCHR Plumsail forms and web automation workflow
 - `utils/core.js` contains generic helpers such as `ensureArray()` and `escapeHtml()`.
 - `utils/html-cleanup.js` contains HTML cleanup helpers for rich-text content.
 - `utils/languages.js` contains UN language constants and language-selection helpers.
+- `utils/translations.js` contains reusable statement-page term translations.
+- `utils/transliteration.js` contains Arabic, Cyrillic, and Chinese URL transliteration helpers.
 
 ## Usage
 

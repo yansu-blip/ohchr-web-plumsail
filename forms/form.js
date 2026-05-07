@@ -15,6 +15,10 @@
             ));
         }
 
+        if (typeof OHCHR.initPageUrls === 'function') {
+            await OHCHR.initPageUrls(form, window.OHCHR_FORM_CONFIG?.pageUrls);
+        }
+
         await OHCHR.initializeDropdowns(window.OHCHR_FORM_CONFIG?.dropdowns, form);
 
         await OHCHR.initRichTextEditors(window.OHCHR_FORM_CONFIG?.richTextEditors, form);

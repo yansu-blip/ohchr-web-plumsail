@@ -41,6 +41,21 @@ fd.rendered(async function() {
                 applyDirections: true,
                 rtlLanguages: ['Arabic']
             },
+            pageUrls: {
+                pageUrlField: 'PageURL',
+                nonUnUrlField: 'NonUNURL',
+                publicationDateField: 'PublicationDate',
+                originalLanguageField: 'OriginalLanguage',
+                previewLanguageField: 'PreviewLanguage',
+                nonUnToggleField: 'NonUNToggle',
+                nonUnLanguageField: 'NonUNLangName',
+                finalisationNonUnField: 'FinalisationNonUNLang',
+                issuedByField: 'IssuedBy',
+                subjectField: 'Subject-list',
+                pageTitlePrefix: 'PageTitle',
+                englishTitleSelector: '.ENPageTitleBG',
+                showSelector: '.HideOrShow'
+            },
             dropdowns: {
                 lang: 'en',
                 fields: {
@@ -85,9 +100,12 @@ fd.rendered(async function() {
         await loadScript(`${baseUrl}/utils/core.js`);
         await loadScript(`${baseUrl}/utils/html-cleanup.js`);
         await loadScript(`${baseUrl}/utils/languages.js`);
+        await loadScript(`${baseUrl}/utils/translations.js`);
+        await loadScript(`${baseUrl}/utils/transliteration.js`);
 
         await loadScript(`${baseUrl}/modules/plumsail-fields.js`);
         await loadScript(`${baseUrl}/modules/language-accordions.js`);
+        await loadScript(`${baseUrl}/modules/page-url-generator.js`);
         await loadScript(`${baseUrl}/modules/taxonomy-dropdowns.js`);
         await loadScript(`${baseUrl}/modules/richtext-editors.js`);
         await loadScript(`${baseUrl}/modules/richtext-cleaners.js`);
