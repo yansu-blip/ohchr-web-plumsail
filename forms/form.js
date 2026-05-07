@@ -8,6 +8,13 @@
 
         await OHCHR.initLanguageFields(form, window.OHCHR_FORM_CONFIG?.languages);
 
+        if (typeof OHCHR.initLanguageAccordions === 'function') {
+            OHCHR.initLanguageAccordions(form, Object.assign(
+                { languageFields: window.OHCHR_FORM_CONFIG?.languages },
+                window.OHCHR_FORM_CONFIG?.languageAccordions || {}
+            ));
+        }
+
         await OHCHR.initializeDropdowns(window.OHCHR_FORM_CONFIG?.dropdowns, form);
 
         await OHCHR.initRichTextEditors(window.OHCHR_FORM_CONFIG?.richTextEditors, form);
