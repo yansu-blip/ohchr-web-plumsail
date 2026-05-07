@@ -33,6 +33,13 @@ fd.rendered(async function() {
                 originalField: 'OriginalLanguage',
                 otherField: 'OtherUNLanguages'
             },
+            languageAccordions: {
+                containerPrefix: 'AccordionUNLangs',
+                wrapperContainer: 'AccordionUNLangs',
+                autoExpandNew: true,
+                applyDirections: true,
+                rtlLanguages: ['Arabic']
+            },
             dropdowns: {
                 lang: 'en',
                 fields: {
@@ -79,6 +86,7 @@ fd.rendered(async function() {
         await loadScript(`${baseUrl}/utils/languages.js`);
 
         await loadScript(`${baseUrl}/modules/plumsail-fields.js`);
+        await loadScript(`${baseUrl}/modules/language-accordions.js`);
         await loadScript(`${baseUrl}/modules/taxonomy-dropdowns.js`);
         await loadScript(`${baseUrl}/modules/richtext-editors.js`);
         await loadScript(`${baseUrl}/modules/richtext-cleaners.js`);
