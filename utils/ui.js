@@ -1,58 +1,56 @@
 window.OHCHR = window.OHCHR || {};
 
-OHCHR.initBackToTop = function (options = {}) {
+(function() {
+    function moduleUrl(path) {
+        const current = document.currentScript?.src;
 
-    options = options || {};
+        if (current) {
+            return new URL(path, current).href;
+        }
 
-    const {
-        buttonId = 'backToTop',
-        showAfter = 200
-    } = options;
-
-    const btn = document.getElementById(buttonId);
-
-    if (!btn) {
-        console.warn(`BackToTop: element #${buttonId} not found`);
-        return;
+        return `https://cdn.jsdelivr.net/gh/yansu-blip/ohchr-web-plumsail@main/${path.replace(/^\.\.\//, '')}`;
     }
 
-    if (btn.dataset.initialized) return;
-    btn.dataset.initialized = "true";
+    function loadBackToTopModule() {
+        if (OHCHR.BackToTop) {
+            return Promise.resolve(OHCHR.BackToTop);
+        }
 
-    window.addEventListener('scroll', () => {
-        btn.style.display = window.scrollY > showAfter ? 'block' : 'none';
+        if (OHCHR._backToTopModuleReady) {
+            return OHCHR._backToTopModuleReady;
+        }
+
+        OHCHR._backToTopModuleReady = new Promise(function(resolve, reject) {
+            const script = document.createElement('script');
+            script.src = moduleUrl('../modules/back-to-top.js');
+            script.onload = function() {
+                if (OHCHR.BackToTop) {
+                    resolve(OHCHR.BackToTop);
+                } else {
+                    reject(new Error('Back to top module loaded without exposing OHCHR.BackToTop.'));
+                }
+            };
+            script.onerror = function() {
+                reject(new Error('Failed to load back to top module.'));
+            };
+            document.head.appendChild(script);
+        });
+
+        return OHCHR._backToTopModuleReady;
+    }
+
+    OHCHR.initBackToTop = function(options = {}) {
+        return loadBackToTopModule()
+            .then(function(backToTop) {
+                return backToTop.init(options);
+            })
+            .catch(function(err) {
+                console.error('Failed to initialize Back to Top button:', err);
+                throw err;
+            });
+    };
+
+    loadBackToTopModule().catch(function(err) {
+        console.error('Failed to load Back to Top module:', err);
     });
-
-    btn.addEventListener('click', () => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-};
-
-if (!window._backToTopCssInjected) {
-    window._backToTopCssInjected = true;
-
-    const style = document.createElement('style');
-    style.textContent = `
-#backToTop {
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #0078d4;
-    color: white;
-    padding: 10px 14px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 700;
-    z-index: 9999;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    transition: background-color 0.3s, opacity 0.3s;
-  }
-
-#backToTop:hover {
-    background-color: #005a9e;
-}
-`;
-    document.head.appendChild(style);
-}
+})();

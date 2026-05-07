@@ -1,152 +1,108 @@
-OHCHR.dropdownTerms = OHCHR.dropdownTerms || {};
+window.OHCHR = window.OHCHR || {};
 
-OHCHR.initializeDropdowns = async function(config = {}) {
-    if (OHCHR._dropdownsInitialized) return;
-    OHCHR._dropdownsInitialized = true;
-    // Populate configured taxonomy dropdowns when the form opens
-    const getCachedTerms = (key) => {
-        const cached = localStorage.getItem(key);
-        return cached ? JSON.parse(cached) : null;
-    };
+(function() {
+    function moduleUrl(path) {
+        const current = document.currentScript?.src;
 
-    const cacheTerms = (key, terms) => {
-        localStorage.setItem(key, JSON.stringify(terms));
-    };
-
-    const getPrefixByDepth = (depth) => {
-        const d = Number(depth || 0);
-        if (d === 1) return '‣ ';
-        if (d >= 2) return '・‣ ';
-        return '';
-    };
-
-    const getTermList = async (vocabularyId) => {
-        const flowUrl = window.OHCHR_CONFIG?.FLOW_URL;
-        if (!flowUrl) {
-            throw new Error("FLOW_URL is not defined");
-        }
-        const lang = config?.lang || 'en';
-        const cacheKey = `terms-${vocabularyId}-${lang}`;
-
-        const cached = getCachedTerms(cacheKey);
-        if (Array.isArray(cached) && cached.length) {
-            return cached;
+        if (current) {
+            return new URL(path, current).href;
         }
 
-        const response = await fetch(flowUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                term_vocabulary: vocabularyId,
-                langcode: 'en'
-            })
+        return `https://cdn.jsdelivr.net/gh/yansu-blip/ohchr-web-plumsail@main/${path.replace(/^\.\.\//, '')}`;
+    }
+
+    function loadTaxonomyModule() {
+        if (OHCHR.TaxonomyDropdowns) {
+            return Promise.resolve(OHCHR.TaxonomyDropdowns);
+        }
+
+        if (OHCHR._taxonomyDropdownsReady) {
+            return OHCHR._taxonomyDropdownsReady;
+        }
+
+        OHCHR._taxonomyDropdownsReady = new Promise(function(resolve, reject) {
+            const script = document.createElement('script');
+            script.src = moduleUrl('../modules/taxonomy-dropdowns.js');
+            script.onload = function() {
+                if (OHCHR.TaxonomyDropdowns) {
+                    resolve(OHCHR.TaxonomyDropdowns);
+                } else {
+                    reject(new Error('Taxonomy dropdown module loaded without exposing OHCHR.TaxonomyDropdowns.'));
+                }
+            };
+            script.onerror = function() {
+                reject(new Error('Failed to load taxonomy dropdown module.'));
+            };
+            document.head.appendChild(script);
         });
 
-        if (!response.ok) {
-            throw new Error(`Failed to fetch terms for ${vocabularyId}: ${response.status}`);
-        }
+        return OHCHR._taxonomyDropdownsReady;
+    }
 
-        const json = await response.json();
-        const data = Array.isArray(json.data) ? json.data : [];
+    OHCHR.dropdownTerms = OHCHR.dropdownTerms || {};
 
-        const termList = data
-            .map(term => {
-                if (typeof term === 'string') return term;
-
-                const name = (term.term_name || '').trim();
-                const depth = term.depth ?? term.level ?? 0;
-                const prefix = getPrefixByDepth(depth);
-
-                return name ? prefix + name : '';
+    OHCHR.initializeDropdowns = function(config = {}, form) {
+        return loadTaxonomyModule()
+            .then(function(taxonomy) {
+                return taxonomy.initialize(form || window.fd, config);
             })
+            .catch(function(err) {
+                console.error('Failed to initialize taxonomy dropdowns:', err);
+                throw err;
+            });
+    };
+
+    OHCHR.normalizeLabel = function(value) {
+        return String(value || '')
+            .replace(/^[・‣\s]+/, '')
+            .trim();
+    };
+
+    OHCHR.matchPrefixedValues = function(values, availableItems) {
+        const ensureArray = OHCHR.ensureArray || function(value) {
+            if (Array.isArray(value)) return value;
+            if (value === null || value === undefined || value === '') return [];
+            return [value];
+        };
+
+        const map = new Map(
+            ensureArray(availableItems).map(item => [
+                OHCHR.normalizeLabel(item),
+                item
+            ])
+        );
+
+        return ensureArray(values)
+            .map(v => map.get(OHCHR.normalizeLabel(v)) || v)
             .filter(Boolean);
-
-        if (termList.length) {
-            cacheTerms(cacheKey, termList);
-        }
-
-        return termList;
     };
 
-    const populateDropdown = async (termList, field) => {
-        await field.ready();
+    OHCHR.setMultiValue = function(fieldName, values, form) {
+        const activeForm = form || window.fd;
+        const field = activeForm?.field?.(fieldName);
 
-        const items = (termList || []).map(x => ({
-            text: x,
-            value: x
-        }));
-
-        console.log(`Populating ${field.internalName || field.name} with`, items);
-
-        field.widget.setOptions({
-            dataTextField: 'text',
-            dataValueField: 'value',
-            filter: 'contains'
-        });
-
-        field.widget.setDataSource(new kendo.data.DataSource({
-            data: items
-        }));
-
-        field.widget.refresh();
-    };
-    
-    const fields = config?.fields || {};
-    
-    for (const [vocabularyId, fieldName] of Object.entries(fields)) {
-        if (!fieldName) continue;
-
-        try {
-            OHCHR.dropdownTerms[vocabularyId] = await getTermList(vocabularyId);
-            
-            await populateDropdown(
-                OHCHR.dropdownTerms[vocabularyId],
-                fd.field(fieldName)
-            );
-        } catch (err) {
-            console.error(`Failed for ${vocabularyId}:`, err);
+        if (!field) {
+            console.warn(`Field not found: ${fieldName}`);
+            return null;
         }
-    }
-};
 
-OHCHR.normalizeLabel = function(value) {
-    return String(value || '')
-        .replace(/^[・‣\s]+/, '')
-        .trim();
-};
+        const ensureArray = OHCHR.ensureArray || function(value) {
+            if (Array.isArray(value)) return value;
+            if (value === null || value === undefined || value === '') return [];
+            return [value];
+        };
 
-OHCHR.matchPrefixedValues = function(values, availableItems) {
-    const map = new Map(
-        OHCHR.ensureArray(availableItems).map(item => [
-            OHCHR.normalizeLabel(item),
-            item
-        ])
-    );
+        const arr = ensureArray(values).filter(Boolean);
 
-    return OHCHR.ensureArray(values)
-        .map(v => map.get(OHCHR.normalizeLabel(v)) || v)
-        .filter(Boolean);
-};
+        console.log(`Setting ${fieldName}:`, arr);
 
-OHCHR.setMultiValue = function(fieldName, values) {
-    const field = fd.field(fieldName);
-    if (!field) {
-        console.warn(`Field not found: ${fieldName}`);
-        return;
-    }
-    const arr = OHCHR.ensureArray(values).filter(Boolean);
+        field.value = arr;
 
-    if (!field) {
-        console.warn(`Field not found: ${fieldName}`);
-        return;
-    }
+        if (field.widget) {
+            field.widget.value(arr);
+            field.widget.trigger('change');
+        }
 
-    console.log(`Setting ${fieldName}:`, arr);
-
-    field.value = arr;
-
-    if (field.widget) {
-        field.widget.value(arr);
-        field.widget.trigger('change');
-    }
-};
+        return field;
+    };
+})();

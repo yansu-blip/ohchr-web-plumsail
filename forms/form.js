@@ -1,47 +1,21 @@
-(async function () {
+(async function() {
     try {
-        await OHCHR.initializeDropdowns(window.OHCHR_FORM_CONFIG?.dropdowns);
+        const form = window.fd || (typeof fd !== 'undefined' ? fd : null);
 
-        OHCHR.initRichTextEditors(window.OHCHR_FORM_CONFIG?.richTextEditors);
+        if (!form) {
+            throw new Error('Plumsail form object is not available.');
+        }
 
-        initRichTextCleaners(window.OHCHR_FORM_CONFIG?.richTextCleaners || []);
+        await OHCHR.initLanguageFields(form, window.OHCHR_FORM_CONFIG?.languages);
+
+        await OHCHR.initializeDropdowns(window.OHCHR_FORM_CONFIG?.dropdowns, form);
+
+        await OHCHR.initRichTextEditors(window.OHCHR_FORM_CONFIG?.richTextEditors, form);
+
+        await OHCHR.initRichTextCleaners(window.OHCHR_FORM_CONFIG?.richTextCleaners || [], form);
 
         console.log('Form initialized successfully.');
     } catch (error) {
         console.error('Error initializing Statements form:', error);
     }
 })();
-
-function attachRichTextCleaner(field, options = {}) {
-    const editor = field.widget;
-
-    OHCHR.enforceNoImages(editor);
-
-    editor.bind('paste', function() {
-        setTimeout(function() {
-            let html = editor.value();
-            html = OHCHR.cleanRichTextHtml(html, options);
-
-            editor.value(html);
-            field.value = html;
-        }, 300);
-    });
-}
-
-function initRichTextCleaners(config = []) {
-    if (window._renderedPasteCleanup) return;
-    window._renderedPasteCleanup = true;
-
-    config.forEach(item => {
-        const languages = item.languages?.length ? item.languages : [""];
-
-        languages.forEach(lang => {
-            const field = fd.field(`${item.prefix}${lang}`);
-            if (!field) return;
-            
-            field.ready().then(function () {
-                attachRichTextCleaner(field, item.options);
-            });
-        });
-    });
-}

@@ -20,14 +20,44 @@ OHCHR.LANG_LOCALE_MAP = {
     Chinese: 'zh-CN'
 };
 
-OHCHR.getActiveLangs = function(fd, config = {}) {
-    const originalField = config.originalField || 'OriginalLanguage';
-    const otherFields = config.otherFields || ['OtherUNLanguages'];
+OHCHR.LanguageFields = OHCHR.LanguageFields || {};
 
-    const orig = fd.field(originalField)?.value;
+OHCHR.LanguageFields.ensureArray = function(value) {
+    if (typeof OHCHR.ensureArray === 'function') {
+        return OHCHR.ensureArray(value);
+    }
 
-    const others = otherFields.flatMap(fieldName =>
-        OHCHR.ensureArray(fd.field(fieldName)?.value)
+    if (Array.isArray(value)) return value;
+    if (value === null || value === undefined || value === '') return [];
+    return [value];
+};
+
+OHCHR.LanguageFields.normalizeConfig = function(config = {}) {
+    const otherFieldNames = OHCHR.LanguageFields.ensureArray(
+        config.otherFields || config.otherField || 'OtherUNLanguages'
+    );
+
+    return {
+        originalField: config.originalField || 'OriginalLanguage',
+        otherField: otherFieldNames[0] || 'OtherUNLanguages',
+        otherFields: otherFieldNames.length ? otherFieldNames : ['OtherUNLanguages'],
+        languages: config.languages || OHCHR.UN_LANGUAGES || [],
+        logActive: config.logActive !== false
+    };
+};
+
+OHCHR.getActiveLangs = function(form, config = {}) {
+    const activeForm = form || window.fd;
+    const settings = OHCHR.LanguageFields.normalizeConfig(config);
+
+    if (!activeForm || typeof activeForm.field !== 'function') {
+        return [];
+    }
+
+    const orig = activeForm.field(settings.originalField)?.value;
+
+    const others = settings.otherFields.flatMap(fieldName =>
+        OHCHR.LanguageFields.ensureArray(activeForm.field(fieldName)?.value)
     );
 
     const active = orig
@@ -37,24 +67,29 @@ OHCHR.getActiveLangs = function(fd, config = {}) {
     return [...new Set(active.filter(Boolean))];
 };
 
-OHCHR.updateOtherLanguagesOptions = function(fd, config = {}) {
-    const originalFieldName = config.originalField || 'OriginalLanguage';
-    const otherFieldName = config.otherField || 'OtherUNLanguages';
-    const languages = config.languages || OHCHR.UN_LANGUAGES || [];
+OHCHR.updateOtherLanguagesOptions = function(form, config = {}) {
+    const activeForm = form || window.fd;
+    const settings = OHCHR.LanguageFields.normalizeConfig(config);
 
-    const originalField = fd.field(originalFieldName);
-    const otherField = fd.field(otherFieldName);
+    if (!activeForm || typeof activeForm.field !== 'function') {
+        return Promise.resolve([]);
+    }
 
-    if (!originalField || !otherField) return;
+    const originalField = activeForm.field(settings.originalField);
+    const otherField = activeForm.field(settings.otherField);
+
+    if (!originalField || !otherField) {
+        return Promise.resolve([]);
+    }
 
     const origLang = originalField.value;
 
-    const items = languages
+    const items = settings.languages
         .filter(lang => lang !== origLang)
         .map(lang => ({ text: lang, value: lang }));
 
-    otherField.ready().then(function() {
-        const current = OHCHR.ensureArray(otherField.value)
+    const applyOptions = function() {
+        const current = OHCHR.LanguageFields.ensureArray(otherField.value)
             .filter(lang => lang !== origLang);
 
         if (otherField.widget && typeof otherField.widget.setDataSource === 'function') {
@@ -71,10 +106,53 @@ OHCHR.updateOtherLanguagesOptions = function(fd, config = {}) {
             try {
                 otherField.options = items;
             } catch (e) {
-                console.warn(`Could not set ${otherFieldName} options:`, e);
+                console.warn(`Could not set ${settings.otherField} options:`, e);
             }
 
             otherField.value = current;
         }
-    });
+
+        return OHCHR.getActiveLangs(activeForm, settings);
+    };
+
+    if (typeof otherField.ready === 'function') {
+        return otherField.ready().then(applyOptions);
+    }
+
+    return Promise.resolve(applyOptions());
+};
+
+OHCHR.initLanguageFields = function(form, config = {}) {
+    const activeForm = form || window.fd;
+    const settings = OHCHR.LanguageFields.normalizeConfig(config);
+
+    if (!activeForm || typeof activeForm.field !== 'function') {
+        return Promise.resolve([]);
+    }
+
+    const originalField = activeForm.field(settings.originalField);
+
+    if (!originalField) {
+        return Promise.resolve([]);
+    }
+
+    const update = function() {
+        return OHCHR.updateOtherLanguagesOptions(activeForm, settings).then(function(activeLangs) {
+            if (settings.logActive) {
+                console.log('Active languages:', activeLangs);
+            }
+
+            return activeLangs;
+        });
+    };
+
+    if (!window._languageFieldsInitialized) {
+        window._languageFieldsInitialized = true;
+
+        if (typeof originalField.$on === 'function') {
+            originalField.$on('change', update);
+        }
+    }
+
+    return update();
 };
