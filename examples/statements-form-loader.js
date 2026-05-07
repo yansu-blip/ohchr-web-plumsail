@@ -29,6 +29,10 @@ fd.rendered(async function() {
                     position: 'bottom-center'
                 }
             },
+            languages: {
+                originalField: 'OriginalLanguage',
+                otherField: 'OtherUNLanguages'
+            },
             dropdowns: {
                 lang: 'en',
                 fields: {
